@@ -11,6 +11,7 @@ const sequelize: Sequelize = config.DATABASE;
 import resolve from './core/helper.js';
 import BotsApp from './core/sidekick.js';
 import { downloadContentFromMessage } from "@adiwajshing/baileys";
+import lastTyping from "./data/lastTyping.json";
 
 const logger: Logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }).child({})
 logger.level = 'fatal'
@@ -23,10 +24,10 @@ setInterval(() => {
 }, 10_000);
 const users = {
     917982975985: "Sadhvi",
-    918882612206: "Muskan",
-    918168265013: "Aman",
+    918882612206: "Musk",
+    918168265013: "Yadav",
     919210943308: "Div",
-    917042275334: "Srishti",
+    917042275334: "Sri",
     917011411568: "Pritam"
 }
 
@@ -35,7 +36,7 @@ const deletedMsgEnabledGroups = {
 }
 const muskanId = '918882612206@s.whatsapp.net'
 const hackID = '120363047042799281@g.us'
-
+const tandelBazz = "120363029101329733@g.us"
 
 const myID = "917531813068@s.whatsapp.net"
 
@@ -71,6 +72,13 @@ function scheduleTaskAtTime(task: { (): Promise<void>; (): Promise<void>; (): vo
     }
     setTimeout(task, delay);
 }
+
+
+// save every 1 hour
+setInterval(() => {
+    require("fs").writeFileSync("data/lastTyping.json", JSON.stringify(lastTyping, null, 2))
+}, 1000 * 60 * 60);
+
 
 const afk = {
     enabled: true,
@@ -119,13 +127,8 @@ async function startSock() {
 
 
             if (events['connection.update']) {
-
-
-
                 const update = events['connection.update'];
-
                 // console.log(chalk.greenBright.bold('[INFO] Connection update: ' + JSON.stringify(update, null, 2) + ''));
-
                 const { connection, lastDisconnect } = update;
                 if (connection === 'close') {
                     if ((lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
@@ -139,36 +142,11 @@ async function startSock() {
                 } else if (connection === 'open') {
                     console.log(chalk.greenBright.bold("[INFO] Connected! Welcome to BotsApp"));
 
-                    // if (!taskScheduled) {
-                    //     taskScheduled = true;
-                    //     async function muskanDm() {
-                    //         await sock.sendMessage(muskanId, { text: "Happy birthday, Muskan! On your special day, I wish you all the happiness and joy that you deserve. You are an amazing person and an incredible friend, and I feel blessed to have you in my life. May this year bring you success in all your endeavors and may you be surrounded by love and positivity always. Cheers to another year of making beautiful memories together! Enjoy your day to the fullest and have a wonderful year ahead!🎂🎉" })
-                    //     }
-                    //     async function groupMessage() {
-                    //         await sock.sendMessage(hackID, { text: "-gpt Happy birthday muski-phuski🎉🎉🎂[AUTOMATED MESSAGE]" })
-                    //         await sock.sendMessage(hackID, { text: "-gpt Write a beautiful Happy birthday message for Muskan.[AUTOMATED MESSAGE]" })
-
-                    //     }
-                    //     const scheduledDate = new Date('2023-03-24T11:50:00.000+05:30')
-                    //     // const scheduledDate1 = new Date('2023-03-23T100:00:00.000+05:30')
-                    //     // scheduleTaskAtTime(muskanDm, scheduledDate1.getTime());
-                    //     scheduleTaskAtTime(groupMessage, scheduledDate.getTime());
-
-                    //     console.log("TASK SCHEDULED");
-                    //     console.log("TASK SCHEDULED");
-                    //     console.log("TASK SCHEDULED");
-                    //     console.log("TASK SCHEDULED");
-                    //     console.log("TASK SCHEDULED");
-
-
-                    // }
                 }
             }
-
             if (events['creds.update']) {
                 await saveCreds()
             }
-
             if (events['contacts.upsert']) {
                 const contacts: Contact[] = events['contacts.upsert'];
                 const contactsUpdate = (newContacts: Contact[]) => {
@@ -184,25 +162,84 @@ async function startSock() {
 
                 contactsUpdate(contacts);
             }
+            if (events['presence.update']) {
 
-            if (events['contacts.upsert']) {
-                const contacts: Contact[] = events['contacts.upsert'];
-                const contactsUpdate = (newContacts: Contact[]) => {
-                    for (const contact of newContacts) {
-                        if (store.contacts[contact.id]) {
-                            Object.assign(store.contacts[contact.id], contact);
-                        } else {
-                            store.contacts[contact.id] = contact;
+                console.log(chalk.greenBright.bold('[INFO] Chats update: ' + JSON.stringify(events['presence.update'], null, 2) + ''));
+                // {
+                //     "id": "120363047042799281@g.us",
+                //     "presences": {
+                //       "919210943308@s.whatsapp.net": {
+                //         "lastKnownPresence": "composing"
+                //       }
+                //     }
+                //   }
+
+
+                const presence = events['presence.update'];
+                const { id, presences } = presence;
+                const isGroup = id.endsWith('@g.us');
+
+                if (isGroup && (id === hackID || id === tandelBazz)) {
+                    const sender = Object.keys(presences)[0];
+                    const { lastKnownPresence } = presences[sender];
+                    // const name = users[sender.replace('@s.whatsapp.net', '')];
+                    const number = sender.split('@')[0];
+                    const lastReply = lastTyping.group[sender] ? lastTyping.group[sender] : new Date().getTime();
+                    const currTime = new Date().getTime();
+                    // if currtime and lastreply is greater than 1 hour
+                    if (currTime - lastReply > 1.5 * 60 * 60 * 1000) {
+                        const messages = [
+                            "Whats up @" + number + "?",
+                            `Kya chal raha hai @${number}?`,
+                            `Welcome back @${number}!`,
+                            `Hello @${number}!`,
+                            `Aagye Apni maut ka Tamsha dekhne, ${number}`,
+                        ]
+                        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+                        if (lastKnownPresence) {
+                            await sock.sendMessage(id, { text: randomMessage, mentions: [sender] });
                         }
+                        lastTyping.group[sender] = new Date().getTime();
+                    } else if (lastKnownPresence == "composing") {
+                        console.log(chalk.greenBright.bold('[INFO] Last reply was less than 1 hour ago'));
+                        lastTyping.group[sender] = new Date().getTime();
                     }
-                    return;
-                };
+                } else if (!isGroup) {
 
-                contactsUpdate(contacts);
+                    const sender = Object.keys(presences)[0];
+                    const { lastKnownPresence } = presences[sender];
+                    // const name = users[sender.replace('@s.whatsapp.net', '')];
+                    const lastReply = lastTyping[sender] ? lastTyping[sender] : new Date().getTime();
+                    const currTime = new Date().getTime();
+
+                    if (currTime - lastReply > 2 * 60 * 60 * 1000) {
+                        // Some conversation starters messages list
+                        const messages = [
+                            "Whats up?",
+                            `Kya chal raha hai?`,
+                            `Hi!`,
+                            `Hello!`,
+                            "Yo",
+                            "Hey",
+                            // `Aagye Apni maut ka Tamsha dekhne, ${name}`,
+                        ]
+
+                        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                        if (lastKnownPresence == "composing") {
+                            await sock.sendMessage(id, { text: randomMessage });
+                        }
+                        lastTyping[sender] = new Date().getTime();
+                    } else if (lastKnownPresence == "composing") {
+                        console.log(chalk.greenBright.bold('[INFO] Last reply was less than 1 hour ago'));
+                        lastTyping[sender] = new Date().getTime();
+                    }
+                }
             }
             if (events['messages.upsert']) {
                 const upsert = events['messages.upsert'];
                 if (upsert.type !== 'notify') {
+                    console.log(chalk.greenBright.bold('[INFO] Chats update: Message not notify ' + JSON.stringify(upsert, null, 2)));
                     return;
                 }
                 for (const msg of upsert.messages) {
@@ -221,37 +258,8 @@ async function startSock() {
                                 console.log(chalk.redBright.bold(`[INFO] Deleted message not found.`));
                                 return
                             }
-                            // const deletedMessageBA: BotsApp = resolve(deletedMessage, sock);
                             // forward the deleted message to the admin based on the message type
                             await sock.sendMessage(messageInstance.chatId, { forward: deletedMessage }, { quoted: deletedMessage, });
-
-                            // if (deletedMessageBA.isTextReply) {
-                            //     await sock.sendMessage(messageInstance.chatId,
-                            //         {
-                            //             text: `From: @${deletedMessageBA.sender.replace('@s.whatsapp.net', "")}\n*Message:* ${deletedMessageBA.body}\n*Reply message:* ${deletedMessageBA.replyMessage}`,
-                            //             mentions: [deletedMessageBA.sender]
-                            //         }
-                            //         , { quoted: deletedMessage }
-                            //     )
-                            // } else if (!deletedMessageBA.isTextReply && !deletedMessageBA.isImage) {
-                            //     await sock.sendMessage(
-                            //         messageInstance.chatId,
-                            //         {
-                            //             text: `*From:* @${deletedMessageBA.sender.replace('@s.whatsapp.net', "")}\n*Message:* ${deletedMessageBA.body}`,
-                            //             mentions: [deletedMessageBA.sender]
-                            //         }
-                            //         , { quoted: deletedMessage })
-
-                            // }
-                            //  else if (deletedMessageBA.isImage || deletedMessageBA.isGIF || deletedMessageBA.isVideo) {
-                            //     var replyChatObject = {
-                            //         message: (deletedMessageBA.type === 'image' ? chat.message.imageMessage : chat.message.videoMessage),
-                            //         type: deletedMessageBA.type === 'image' ? 'image' : 'video',
-                            //     };
-                            //     var imageId: string = chat.key.id;
-                            //     const media = await downloadContentFromMessage(replyChatObject.message, replyChatObject.type === "image" ? "image" : "video");
-                            //     console.log(JSON.stringify(media, null, 2), "deleted media")
-                            // }
                         }
                     } else if (!chat.key.fromMe && chat.key.remoteJid.includes("@s.whatsapp.net")) {
 
@@ -298,12 +306,9 @@ async function startSock() {
                 }
             }
             if (events['group-participants.update']) {
-
                 const { id, participants, action } = events['group-participants.update'];
                 console.log(JSON.stringify(events['group-participants.update'], null, 2))
-
                 if (participants[0] === myID) {
-
                     if (action === "promote") {
                         console.log(chalk.redBright.bold(`[INFO] Promoted to admin.`));
                         const groupMetadata = await sock.groupMetadata(id);
@@ -318,35 +323,11 @@ async function startSock() {
                                 id,
                                 nonSuperAdminsID,
                                 "demote"
-                                // replace this parameter with "remove", "demote" or "promote"
                             )
                         }
                         if (groupSuperAdmins.length === 0 || (groupSuperAdmins.length === 1 && groupSuperAdmins[0].id == myID)) {
                             await sock.sendMessage(id, { text: "Hah haah haaah!, Now i am the king of this group!" });
                         }
-
-                        // console.log(JSON.stringify(groupMetadata, null, 2));
-                        // ev.on(, ({ id, participants, action }) => {
-                        //     const metadata = groupMetadata[id];
-                        //     if (metadata) {
-                        //         switch (action) {
-                        //             case 'add':
-                        //                 metadata.participants.push(...participants.map(id => ({ id, isAdmin: false, isSuperAdmin: false })));
-                        //                 break;
-                        //             case 'demote':
-                        //             case 'promote':
-                        //                 for (const participant of metadata.participants) {
-                        //                     if (participants.includes(participant.id)) {
-                        //                         participant.isAdmin = action === 'promote';
-                        //                     }
-                        //                 }
-                        //                 break;
-                        //             case 'remove':
-                        //                 metadata.participants = metadata.participants.filter(p => !participants.includes(p.id));
-                        //                 break;
-                        //         }
-                        //     }
-                        // });
                     }
                 }
             }
