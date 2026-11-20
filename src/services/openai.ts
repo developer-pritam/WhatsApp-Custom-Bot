@@ -24,7 +24,7 @@ async function generateRandomFact() {
       url: 'https://openai-pingolearn-prod-global-01.openai.azure.com/openai/deployments/pritam-test/completions?api-version=2022-12-01',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': process.env.AZURE_OPENAI_API_KEY || 'YOUR_AZURE_OPENAI_API_KEY'
+        'api-key': process.env.AZURE_OPENAI_KEY || 'YOUR_AZURE_OPENAI_KEY'
       },
       data: {
         "prompt": `Generate just one ${randomNo > 50 ? "random" : "romantic"} hard/uncommon english word used in conversation with meaning. Use the key passed in prompt to randomize the response (Key = ${randomizationKey}).\n\nWord: *Fool’s Gold*\nMeaning: Iron Pyrites, a worthless rock that resembles real gold\n\nWord: `,
