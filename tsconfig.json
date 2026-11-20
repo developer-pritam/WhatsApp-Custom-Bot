@@ -9,5 +9,5 @@
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "exclude": ["**/*.test.ts", "distt/**/*", "dist/**/*"]
+  "exclude": ["**/*.test.ts", "dist/**/*", "test.ts"]
 }
